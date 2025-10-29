@@ -11,7 +11,7 @@ import base64
 import os
 
 app = Flask(__name__)
-app.secret_key = "your-secret-key-here"
+app.secret_key = "azizumatiya@123"
 CORS(app)
 
 # MongoDB connection
@@ -182,11 +182,11 @@ def validate_password(password, confirm_password):
     
     return True, "Password is valid."
 
-# Redirect root route to registration page if not logged in, else to dashboard
+# Redirect root route to dashboard if logged in, else to registration
 @app.route('/', methods=['GET'])
 def root():
     if session.get('user_id'):
-        return redirect(url_for('serve_registration'))
+        return redirect(url_for('serve_dashboard'))
     return redirect(url_for('serve_registration'))
 
 # Routes for serving HTML pages
@@ -219,6 +219,11 @@ def serve_dashboard():
 
 @app.route('/login', methods=['GET', 'POST'])
 def serve_login():
+    if session.get('user_id'):
+        # If already logged in, redirect to the requested page or dashboard
+        next_url = request.args.get('redirect', url_for('serve_dashboard'))
+        return redirect(next_url)
+
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
@@ -241,7 +246,9 @@ def serve_login():
         
         flash("Login successful! Redirecting to dashboard...", "success")
         
-        return redirect(url_for('serve_home1'))
+        # Respect redirect param if provided, else go to dashboard
+        next_url = request.args.get('redirect', url_for('serve_dashboard'))
+        return redirect(next_url)
 
     return render_template('login.html')
 
@@ -250,10 +257,12 @@ def logout_user():
     session.pop('user_id', None)
     session.pop('email', None)
     flash("You have been logged out.", "success")
-    return redirect(url_for('serve_login'))
+    return redirect(url_for('serve_registration'))
 
 @app.route('/registration', methods=['GET'])
 def serve_registration():
+    if session.get('user_id'):
+        return redirect(url_for('serve_dashboard'))
     return render_template('registration.html')
 
 @app.route('/register_user', methods=['POST'])
@@ -326,7 +335,8 @@ def register_user():
     session['email'] = email
 
     flash("Registration successful! You are now logged in.", "success")
-    return redirect(url_for('serve_login'))
+    # Redirect to dashboard after registration
+    return redirect(url_for('serve_dashboard'))
 
 @app.route('/profile', methods=['GET'])
 def serve_profile():
